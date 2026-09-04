@@ -1,0 +1,7 @@
+{:schema 1
+ :id :otel.core-async-flow/basic
+ :selections
+ [{:resource "META-INF/jolt/aspects/packs/core-async-flow-0.1.0.edn"
+   :consumers
+   [{:provider otel.instrumentation.core-async-flow/aspect-provider
+     :roles [:concurrency/flow-lifecycle :concurrency/flow-step]}]}]}

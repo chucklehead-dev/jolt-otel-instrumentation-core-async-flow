@@ -1,0 +1,92 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      JOLT_CACHE_DIR: ${{ github.workspace }}/.jolt-cache-717eaeef
+      JOLT_GITLIBS_DIR: ${{ github.workspace }}/.jolt-gitlibs-717eaeef
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the pinned aspect compiler
+        uses: actions/checkout@v5
+        with:
+          repository: casselc/jolt
+          ref: 717eaeef8e9dca3d53045dadcdb8ae6d081500dd
+          path: .jolt-compiler
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Verify compiler provenance
+        working-directory: .jolt-compiler
+        run: |
+          test "$(git rev-parse HEAD)" = "717eaeef8e9dca3d53045dadcdb8ae6d081500dd"
+          test "$(git rev-parse 9b7683953b444ece2a2e783e8fa46d31177bb476^{tree})" = \
+            "1179a2730c7098b1cc65ec6becdc36309d87d55e"
+          git merge-base --is-ancestor \
+            9b7683953b444ece2a2e783e8fa46d31177bb476 HEAD
+          ASPECT_INTEGRATION_REQUIRE=1 \
+            bash test/aspect-integration-provenance-smoke.sh
+          git tag --force v0.8.1 \
+            9b7683953b444ece2a2e783e8fa46d31177bb476
+          test "$(git describe --tags --long HEAD)" = \
+            "v0.8.1-33-g717eaeef"
+
+      - name: Install compiler build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git liblz4-dev zlib1g-dev libncurses-dev uuid-dev
+
+      - name: Cache Chez Scheme 10.4.1
+        id: cache-chez
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/chez
+          key: chez-${{ runner.os }}-${{ env.ImageOS }}-v10.4.1-x11off
+
+      - name: Build Chez Scheme 10.4.1
+        if: steps.cache-chez.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch v10.4.1 \
+            https://github.com/cisco/ChezScheme.git /tmp/chez-src
+          cd /tmp/chez-src
+          ./configure --installprefix="$RUNNER_TEMP/chez" --threads --disable-x11
+          make -j"$(nproc)"
+          make install
+
+      - name: Put Chez Scheme 10.4.1 on PATH
+        run: |
+          printf '#!/bin/sh\nexec "%s/bin/scheme" "$@"\n' \
+            "$RUNNER_TEMP/chez" > "$RUNNER_TEMP/chez/bin/chez"
+          chmod +x "$RUNNER_TEMP/chez/bin/chez"
+          echo "$RUNNER_TEMP/chez/bin" >> "$GITHUB_PATH"
+          test "$("$RUNNER_TEMP/chez/bin/chez" --version)" = "10.4.1"
+
+      - name: Build the pinned aspect compiler
+        working-directory: .jolt-compiler
+        run: |
+          make CHEZ="$RUNNER_TEMP/chez/bin/chez" -j1 jolt-release
+          echo "$GITHUB_WORKSPACE/.jolt-compiler/target/release" >> "$GITHUB_PATH"
+
+      - name: Assert Jolt version
+        run: test "$(jolt --version)" = "jolt v0.8.1-33-g717eaeef"
+
+      - name: Focused provider tests
+        run: jolt -Srepro -M:test
+
+      - name: Source annotations, preset, runtime, and effect evidence
+        env:
+          JOLT_BIN: ${{ github.workspace }}/.jolt-compiler/target/release/jolt
+        run: sh test/preset_build_smoke.sh

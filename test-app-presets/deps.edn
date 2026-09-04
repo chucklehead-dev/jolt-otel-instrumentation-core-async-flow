@@ -1,0 +1,17 @@
+{:paths ["src" "test"]
+
+ :deps {io.github.casselc/otel
+        {:git/url "https://github.com/casselc/otel.git"
+         :git/sha "a9badb98a86d4e0aa207aa0609da03dc8e4c087f"}}
+
+ :jolt/aspects
+ {:library
+  {:id io.github.chucklehead-dev/jolt-aspect-packs-flow-fixture
+   :version "0.1.0"}
+  :namespaces [jolt.aspect-packs.scenario.core-async-flow]
+  :manifest "src/META-INF/jolt/aspects/packs/core-async-flow-0.1.0.edn"}
+
+ :jolt/build
+ {:aspects
+  [{:preset "META-INF/jolt/instrumentation/core-async-flow/basic.edn"}]
+  :aspect-report "target/core-async-flow-preset-aspects.edn"}}
