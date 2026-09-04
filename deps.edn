@@ -1,0 +1,13 @@
+{:paths ["src"]
+
+ :deps {io.github.chucklehead-dev/jolt-aspect-packs
+        {:git/url "https://github.com/chucklehead-dev/jolt-aspect-packs.git"
+         :git/sha "dddb6002496c579a9b976a7fe8d1d5f862cb0159"}
+        io.github.casselc/otel
+        {:git/url "https://github.com/casselc/otel.git"
+         :git/sha "a9badb98a86d4e0aa207aa0609da03dc8e4c087f"}}
+
+ :aliases {:test {:extra-paths ["test"]
+                  :main-opts ["-m" "otel.instrumentation.core-async-flow-test-runner"]}}
+
+ :tasks {test "jolt -M:test"}}
