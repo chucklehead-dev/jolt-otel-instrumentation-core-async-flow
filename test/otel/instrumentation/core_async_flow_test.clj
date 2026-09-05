@@ -230,6 +230,84 @@
         (is (= 1 @calls))
         (is (empty? (memory/spans exporter)))))))
 
+(deftest wrapper-contract-scenarios-are-non-vacuous
+  (with-memory-sdk
+    (fn [exporter]
+      (testing "suppressed unknown operations delegate once without a span"
+        (let [value (Object.)
+              calls (atom 0)
+              observed
+              (context/with-instrumentation-suppressed
+                (instrumentation/around-step
+                 (point :unknown :concurrency/flow-step)
+                 []
+                 (fn [] (swap! calls inc) value)))]
+          (is (identical? value observed))
+          (is (= 1 @calls))
+          (is (empty? (memory/spans exporter)))))
+
+      (testing "known returning operations delegate once and end one span"
+        (let [before (count (memory/spans exporter))
+              value (Object.)
+              calls (atom 0)
+              observed (instrumentation/around-lifecycle
+                        (point :core-async-flow/stop
+                               :concurrency/flow-lifecycle)
+                        []
+                        (fn [] (swap! calls inc) value))]
+          (is (identical? value observed))
+          (is (= 1 @calls))
+          (is (= (inc before) (count (memory/spans exporter))))))
+
+      (testing "known throwing operations preserve identity and end an error span"
+        (let [before (count (memory/spans exporter))
+              error (ex-info "private" {})
+              calls (atom 0)
+              caught (try
+                       (instrumentation/around-lifecycle
+                        (point :core-async-flow/stop
+                               :concurrency/flow-lifecycle)
+                        []
+                        (fn [] (swap! calls inc) (throw error)))
+                       (catch Throwable thrown thrown))
+              spans (memory/spans exporter)
+              error-span (last spans)]
+          (is (identical? error caught))
+          (is (= 1 @calls))
+          (is (= (inc before) (count spans)))
+          (is (= :error (get-in error-span [:status :code])))))
+
+      (testing "unsuppressed unknown operations reject before target or span"
+        (let [before (count (memory/spans exporter))
+              calls (atom 0)
+              caught (try
+                       (instrumentation/around-lifecycle
+                        (point :unknown :concurrency/flow-lifecycle)
+                        []
+                        (fn [] (swap! calls inc)))
+                       (catch Throwable thrown thrown))]
+          (is (= :otel.instrumentation.core-async-flow/invalid-operation
+                 (:kind (ex-data caught))))
+          (is (zero? @calls))
+          (is (= before (count (memory/spans exporter)))))))))
+
+(deftest suppressed-throw-preserves-identity-without-a-span
+  (with-memory-sdk
+    (fn [exporter]
+      (let [error (ex-info "private" {})
+            calls (atom 0)
+            caught
+            (try
+              (context/with-instrumentation-suppressed
+                (instrumentation/around-lifecycle
+                 (point :unknown :concurrency/flow-lifecycle)
+                 []
+                 (fn [] (swap! calls inc) (throw error))))
+              (catch Throwable thrown thrown))]
+        (is (identical? error caught))
+        (is (= 1 @calls))
+        (is (empty? (memory/spans exporter)))))))
+
 (deftest synchronous-parent-context-is-preserved
   (with-memory-sdk
     (fn [exporter]
