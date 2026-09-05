@@ -28,24 +28,35 @@ the package explicitly makes no implicit cross-executor propagation claim.
 
 ## Proof obligations and controls
 
-`wrapper-corrected.smt2` encodes the nested implementation branches separately
-from the declarative contract and asks for an observable deviation. Z3 returns
-`unsat`: those relations are equivalent over the finite Boolean input domain.
-The source-to-model map above, executable scenarios, and mutation controls are
-the evidence that connects this bounded equivalence check to production code.
+`wrapper-contract.smt2` encodes the nested implementation branches separately
+from the declarative contract and asks for an observable classification
+deviation. The shared inputs and complete observation tuple are raw variables;
+the two relations share no derived decision helpers. Z3 returns `unsat` for the
+corrected selector: those relations are equivalent over the finite Boolean
+input domain. The source-to-model map above, executable scenarios, and mutation
+controls are the evidence that connects this bounded equivalence check to
+production code.
 
-The three buggy models use the same deviation predicate and each return `sat`
-with a concrete counterexample:
+Three selector branches use the same disagreement predicate and each return
+`sat` with a concrete counterexample:
 
 - missing `finally` leaves a throwing operation's span unended;
 - double `proceed` violates exactly-once delegation;
 - validating before suppression rejects a suppressed unknown operation.
 
-`wrapper-nonvacuity.smt2` returns `sat` only while five concrete corrected
-paths coexist: suppressed unknown return and throw, known return, known throw,
-and unsuppressed unknown rejection. The matching executable tests invoke the
-production advice for those same paths, including exported-span counts and
-return/throw identity across both wrapper families.
+Six separately scoped boundary queries must return `sat`. Five explicitly
+classify complete corrected observations as accepted: suppressed unknown return
+and throw, known return, known throw, and unsuppressed unknown rejection. A
+sixth explicitly classifies a double-delegation observation as rejected. The
+matching executable tests invoke the production advice for the five positive
+paths, including exported-span counts and return/throw identity across both
+wrapper families.
+
+The machine-readable `wrapper-contract.contract.edn` is checked by the
+reusable `jolt-aspect-packs` anti-vacuity CLI pinned in `deps.edn`. In addition
+to executing the solver expectations, that gate rejects reference aliases,
+shared derived decision helpers, missing mutation or boundary controls,
+unclassified boundaries, vacuous boundaries, and unexpected solver queries.
 
 These are bounded model checks over the wrapper's observable state, not a proof
 of the OTel SDK or the Jolt compiler.
@@ -57,4 +68,4 @@ sh test/formal/check_wrapper_models.sh
 ```
 
 Expected results are one corrected `unsat`, three mutation-control `sat`, and
-one five-path non-vacuity `sat`.
+six classified boundary `sat` results.

@@ -19,6 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Babashka
+        uses: DeLaGuardo/setup-clojure@13.6.1
+        with:
+          bb: 1.13.220
+
       - name: Check out the pinned aspect compiler
         uses: actions/checkout@v5
         with:
@@ -81,7 +86,9 @@ jobs:
           echo "$GITHUB_WORKSPACE/.jolt-compiler/target/release" >> "$GITHUB_PATH"
 
       - name: Assert Jolt version
-        run: test "$(jolt --version)" = "jolt v0.8.1-33-g717eaeef"
+        run: |
+          test "$(jolt --version)" = "jolt v0.8.1-33-g717eaeef"
+          test "$(bb --version)" = "babashka v1.13.220"
 
       - name: Formal wrapper contract and mutation controls
         run: sh test/formal/check_wrapper_models.sh

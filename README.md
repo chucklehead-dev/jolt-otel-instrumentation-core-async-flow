@@ -33,15 +33,19 @@ Run the focused provider suite with Jolt on `PATH`:
 jolt -M:test
 ```
 
-The advice control contract also has checked Z3 models for suppression order,
-exactly-once delegation, span finalization, and return/throw identity. The
-models include three satisfiable mutation controls and five matching,
-non-vacuous runtime scenarios; see
+The advice control contract also has a checked Z3 model for suppression order,
+exactly-once delegation, span finalization, and return/throw identity. It
+includes three satisfiable mutation controls, five matching positive runtime
+scenarios, and an explicitly rejected observation; see
 [`docs/proofs/wrapper-contract.md`](docs/proofs/wrapper-contract.md).
 
 ```sh
 sh test/formal/check_wrapper_models.sh
 ```
+
+The wrapper invokes the reusable structural anti-vacuity checker from the exact
+`jolt-aspect-packs` revision pinned in `deps.edn`; it does not merely compare raw
+solver labels.
 
 Run the source-annotation, preset, binary, runtime, and effect-evidence smoke
 with an aspect-capable compiler:
