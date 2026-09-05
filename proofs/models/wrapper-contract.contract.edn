@@ -1,0 +1,16 @@
+{:spec "wrapper-contract.smt2"
+ :reference {:predicate "reference-valid"
+             :implementation-result "implementation-valid"
+             :violation "wrapper-contract-violation"
+             :selector "implementation"
+             :value 0
+             :case-selector "scenario"}
+ :mutants [{:value 1 :case 2}
+           {:value 2 :case 1}
+           {:value 3 :case 0}]
+ :boundaries [{:case 0 :accept? true}
+              {:case 1 :accept? true}
+              {:case 2 :accept? true}
+              {:case 3 :accept? true}
+              {:case 4 :accept? true}
+              {:case 5 :accept? false}]}
