@@ -47,7 +47,7 @@ jobs:
       - name: Install compiler build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential git liblz4-dev zlib1g-dev libncurses-dev uuid-dev
+          sudo apt-get install -y build-essential git liblz4-dev zlib1g-dev libncurses-dev uuid-dev z3
 
       - name: Cache Chez Scheme 10.4.1
         id: cache-chez
@@ -82,6 +82,9 @@ jobs:
 
       - name: Assert Jolt version
         run: test "$(jolt --version)" = "jolt v0.8.1-33-g717eaeef"
+
+      - name: Formal wrapper contract and mutation controls
+        run: sh test/formal/check_wrapper_models.sh
 
       - name: Focused provider tests
         run: jolt -Srepro -M:test
